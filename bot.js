@@ -9,69 +9,43 @@ const crowdsaleInfo = require('./crowdsale_info');
 
 const bot_token = process.env.SLACK_BOT_TOKEN || '';
 let state = {
-  count : 1
+  counts : {}
 };
 
 const rtm = new RtmClient(bot_token);
 rtm.start();
 
-const postponeMsgReducer = R.curry((config, state, rtm, source) => {
-  if(state.count % config.messageFrequency == 0) {
-    source.onNext(state.count);
+const postponeMsgReducer = R.curry((config, state, rtm, source, message) => {
+  state.counts[message.channel] = state.counts[message.channel] || 1;
+  if(state.counts[message.channel] % config.messageFrequency == 0) {
+    source.onNext(message.channel);
   }
-  state.count++;
+  state.counts[message.channel]++;
   return state;
 });
 
-const ethereumMsgReducer = R.curry((config, state, rtm, source, message) => {
-  let returnMsg;
-
-    if (/(0x)?[0-9a-f]{40}/i.test(message.text)) {
-      // check if it has the basic requirements of an address
-      if (message.text.includes(config.ethereumAddress)) {
-        returnMsg = config.getCorrectEthAddressMsg(message.user);
-      } else {
-        returnMsg = config.getIncorrectEthAddressMsg(message.user);
-      }
-
+const genericAddressCatchingReducer = R.curry((config, state, rtm, source, message) => {
+    if (/(0x)?[0-9a-f]{40}/i.test(message.text)
+       || /[13][a-km-zA-HJ-NP-Z1-9]{25,34}/i.test(message.text)) {
       if(message.user !== state.self.id) {
-        rtm.sendMessage(returnMsg, message.channel);
-      }
-    }
-    return state;
-  });
-
-const bitcoinMsgReducer = R.curry((config, state, rtm, source, message) => {
-  let returnMsg;
-
-    if (/[13][a-km-zA-HJ-NP-Z1-9]{25,34}/i.test(message.text)) {
-      // check if it has the basic requirements of an address
-      if (message.text.includes(config.bitcoinAddress)) {
-        returnMsg = config.getCorrectBtcAddressMsg(message.user);
-      } else {
-        returnMsg = config.getIncorrectBtcAddressMsg(message.user);
-      }
-
-      if(message.user !== state.self.id) {
-        rtm.sendMessage(returnMsg, message.channel);
+        rtm.sendMessage(config.getSuspiciousAddressMsg(), message.channel);
       }
     }
     return state;
   });
 
 const handleRtmMsg = R.curry((config, state, rtm, source, message) => {  
-  state = postponeMsgReducer(config, state, rtm, source);
-  //state = ethereumMsgReducer(config, state, rtm, source, message);
-  //state = bitcoinMsgReducer(config, state, rtm, source, message);
+  state = postponeMsgReducer(config, state, rtm, source, message);
+  state = genericAddressCatchingReducer(config, state, rtm, source, message);
 });
 
-const broadcastPostponementMsg = R.curry(function broadcastPostponementMsg(rtm, config) {
-  rtm.sendMessage(config.getPostponementMsg(), config.channel);
+const broadcastPostponementMsg = R.curry(function broadcastPostponementMsg(rtm, config, channel) {
+  rtm.sendMessage(config.getPostponementMsg(), channel);
 });
 
 const source = new Rx.Subject();
 
-const subscription = source.subscribe(_ => broadcastPostponementMsg(rtm, crowdsaleInfo));
+const subscription = source.subscribe(channel => broadcastPostponementMsg(rtm, crowdsaleInfo, channel));
 
 rtm.on(RTM_EVENTS.MESSAGE, handleRtmMsg(crowdsaleInfo, state, rtm, source));
 
