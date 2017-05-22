@@ -24,14 +24,32 @@ const postponeMsgReducer = R.curry((config, state, rtm, source) => {
 });
 
 const ethereumMsgReducer = R.curry((config, state, rtm, source, message) => {
-    let returnMsg;
+  let returnMsg;
 
     if (/(0x)?[0-9a-f]{40}/i.test(message.text)) {
       // check if it has the basic requirements of an address
       if (message.text.includes(config.ethereumAddress)) {
-        returnMsg = config.getCorrectAddressMsg(message.user);
+        returnMsg = config.getCorrectEthAddressMsg(message.user);
       } else {
-        returnMsg = config.getIncorrectAddressMsg(message.user);
+        returnMsg = config.getIncorrectEthAddressMsg(message.user);
+      }
+
+      if(message.user !== state.self.id) {
+        rtm.sendMessage(returnMsg, message.channel);
+      }
+    }
+    return state;
+  });
+
+const bitcoinMsgReducer = R.curry((config, state, rtm, source, message) => {
+  let returnMsg;
+
+    if (/[13][a-km-zA-HJ-NP-Z1-9]{25,34}/i.test(message.text)) {
+      // check if it has the basic requirements of an address
+      if (message.text.includes(config.bitcoinAddress)) {
+        returnMsg = config.getCorrectBtcAddressMsg(message.user);
+      } else {
+        returnMsg = config.getIncorrectBtcAddressMsg(message.user);
       }
 
       if(message.user !== state.self.id) {
@@ -43,7 +61,8 @@ const ethereumMsgReducer = R.curry((config, state, rtm, source, message) => {
 
 const handleRtmMsg = R.curry((config, state, rtm, source, message) => {  
   state = postponeMsgReducer(config, state, rtm, source);
-  state = ethereumMsgReducer(config, state, rtm, source, message);
+  //state = ethereumMsgReducer(config, state, rtm, source, message);
+  //state = bitcoinMsgReducer(config, state, rtm, source, message);
 });
 
 const broadcastPostponementMsg = R.curry(function broadcastPostponementMsg(rtm, config) {
