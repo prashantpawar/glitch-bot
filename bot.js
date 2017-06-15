@@ -35,7 +35,7 @@ const genericAddressCatchingReducer = R.curry((config, state, rtm, source, messa
   });
 
 const handleRtmMsg = R.curry((config, state, rtm, source, message) => {  
-  state = postponeMsgReducer(config, state, rtm, source, message);
+  // state = postponeMsgReducer(config, state, rtm, source, message);
   state = genericAddressCatchingReducer(config, state, rtm, source, message);
 });
 
