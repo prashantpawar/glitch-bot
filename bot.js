@@ -60,7 +60,7 @@ const channelTopicChangeReducer = R.curry((config, state, rtm, source, message) 
 });
 
 const handleRtmMsg = R.curry((config, state, rtm, source, message) => {  
-  state = postponeMsgReducer(config, state, rtm, source, message);
+  // state = postponeMsgReducer(config, state, rtm, source, message);
   state = genericAddressCatchingReducer(config, state, rtm, source, message);
   state = channelTopicChangeReducer(config, state, rtm, source, message);
 });
