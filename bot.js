@@ -12,7 +12,6 @@ const reducers = require('./reducers');
 
 const botToken = process.env.SLACK_BOT_TOKEN || '';
 const oauthToken = process.env.SLACK_BOT_OAUTH_TOKEN || '';
-console.log(botToken, oauthToken);
 let state = {
   counts : {}
 };
@@ -35,7 +34,7 @@ const source = new Rx.Subject();
 
 const subscription = source.subscribe(channel => broadcastPostponementMsg(rtm, crowdsaleInfo, channel));
 
-rtm.on(RTM_EVENTS.MESSAGE, handleRtmMsg(crowdsaleInfo, state, rtm, source));
+rtm.on(RTM_EVENTS.MESSAGE, handleRtmMsg(crowdsaleInfo, state, web, rtm, source));
 
 rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, (rtmStartData) => {
   state.self = rtmStartData.self;

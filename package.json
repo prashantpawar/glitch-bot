@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@slack/client": "2.0.6",
-    "rx": "^4.1.0",
-    "ramda": "^0.23.0"
+    "ramda": "^0.23.0",
+    "rx": "^4.1.0"
   },
   "engines": {
     "node": "6.10.x"

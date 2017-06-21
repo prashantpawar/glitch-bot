@@ -22,20 +22,28 @@ const catchSuspiciousAddress = R.curry((config, state, web, rtm, source, message
   });
 
 const channelTopicChange = R.curry((config, state, web, rtm, source, message) => {
-  console.log("MESSAGE:", message, state.self.id);
   const configuredTopic = config.getTopicByChannel(message.channel);
   if (message.subtype === 'channel_topic'
    && message.topic !== configuredTopic) {
-    //console.log("topic changed", message, message.channel);
-    
-    web.channels.setTopic(message.channel, configuredTopic, function(err, info) {
-       if (!err) {
-        rtm.sendMessage('Please don\'t change the channel topic', message.channel);
-       }
+    console.log(message);
+
+    web.users.info(message.user, (err, info) => {
       if (err) {
         console.error(err);
       }
+      if (info.user.is_admin) {
+        return;
+      }
+      web.channels.setTopic(message.channel, configuredTopic, function(err, info) {
+        if (!err) {
+          rtm.sendMessage('Please don\'t change the channel topic', message.channel);
+        }
+        if (err) {
+          console.error(err);
+        }
+      });
     });
+    
   }
 });
 
