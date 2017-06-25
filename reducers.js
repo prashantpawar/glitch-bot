@@ -21,32 +21,47 @@ const catchSuspiciousAddress = R.curry((config, state, web, rtm, source, message
     return state;
   });
 
-const channelTopicChange = R.curry((config, state, web, rtm, source, message) => {
-  const configuredTopic = config.getTopicByChannel(message.channel);
-  if (message.subtype === 'channel_topic'
-   && message.topic !== configuredTopic) {
-    console.log(message);
+const channelTopicChange = R.curry((config, state, web, rtm, source, message) =>
+  getLastChannelTopicChangeByAMod(config, web, message.channel)
+  .then(lastTopicMsg => {
+    if (message.subtype === 'channel_topic'
+      && message.topic !== lastTopicMsg.topic) {
 
-    web.users.info(message.user, (err, info) => {
-      if (err) {
-        console.error(err);
-      }
-      if (info.user.is_admin) {
-        return;
-      }
-      web.channels.setTopic(message.channel, configuredTopic, function(err, info) {
-        if (!err) {
-          rtm.sendMessage('Please don\'t change the channel topic', message.channel);
-        }
+      web.users.info(message.user, (err, info) => {
         if (err) {
           console.error(err);
         }
-      });
-    });
-    
-  }
-});
 
+        if (info.user.is_admin) {
+          return;
+        }
+
+        web.channels.setTopic(message.channel, lastTopicMsg.topic, function(err, info) {
+          if (!err) {
+            rtm.sendMessage('Please don\'t change the channel topic', message.channel);
+          }
+          if (err) {
+            console.error(err);
+          }
+        });
+      });
+    }
+  }));
+
+const getLastChannelTopicChangeByAMod = R.curry((config, web, channel) =>
+  new Promise((fulfill, reject) => 
+    web.channels.history(channel, { },
+      (err, response) => {
+        if(err) reject(err);
+        if(!response.ok) reject (response);
+        fulfill(response.messages);
+      }))
+  .then(R.find(el =>
+    (el.type == 'message'
+  && el.subtype == 'channel_topic'
+  && R.contains(el.user, config.getAdminList()))))
+  .catch(console.error)
+);
 
 module.exports = {
   postponeMsg,
