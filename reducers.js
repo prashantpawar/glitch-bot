@@ -22,7 +22,7 @@ const catchSuspiciousAddress = R.curry((config, state, web, rtm, source, message
   });
 
 const channelTopicChange = R.curry((config, state, web, rtm, source, message) =>
-  getLastChannelTopicChangeByAMod(config, web, message.channel)
+  getLastChannelTopicChangeByAMod(config, state, web, message.channel)
   .then(lastTopicMsg => {
     if (message.subtype === 'channel_topic'
       && message.topic !== lastTopicMsg.topic) {
@@ -33,6 +33,7 @@ const channelTopicChange = R.curry((config, state, web, rtm, source, message) =>
         }
 
         if (info.user.is_admin) {
+          state.lastTopicMsg = message;
           return;
         }
 
@@ -48,20 +49,28 @@ const channelTopicChange = R.curry((config, state, web, rtm, source, message) =>
     }
   }));
 
-const getLastChannelTopicChangeByAMod = R.curry((config, web, channel) =>
-  new Promise((fulfill, reject) => 
-    web.channels.history(channel, { },
-      (err, response) => {
-        if(err) reject(err);
-        if(!response.ok) reject (response);
-        fulfill(response.messages);
-      }))
-  .then(R.find(el =>
-    (el.type == 'message'
-  && el.subtype == 'channel_topic'
-  && R.contains(el.user, config.getAdminList()))))
-  .catch(console.error)
-);
+const getLastChannelTopicChangeByAMod = R.curry((config, state, web, channel) => {
+  let lastTopicMsgPromise;
+
+  if(state.lastTopicMsg) {
+    lastTopicMsgPromise = Promise.resolve(state.lastTopicMsg);
+  } else {
+    lastTopicMsgPromise = new Promise((fulfill, reject) => 
+      web.channels.history(channel, { },
+        (err, response) => {
+          if(err) reject(err);
+          if(!response.ok) reject (response);
+          fulfill(response.messages);
+        }))
+    .then(R.find(el =>
+      (el.type == 'message'
+    && el.subtype == 'channel_topic'
+    && R.contains(el.user, config.getAdminList()))))
+    .catch(console.error);
+  }
+
+  return lastTopicMsgPromise;
+});
 
 module.exports = {
   postponeMsg,
